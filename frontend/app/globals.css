@@ -150,3 +150,10 @@ button, input, select, textarea { font: inherit; } button { cursor: pointer; } b
 @media (min-width: 768px) { .sidebar { display: flex; } .app-content { padding-left: 15rem; } .app-shell[data-sidebar-collapsed="true"] .app-content { padding-left: 4.75rem; } .topbar { padding-inline: 2rem; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 @media (prefers-contrast: more) { :root { --line: hsl(220 20% 55%); --muted: hsl(220 20% 25%); } }
+
+.app-shell[data-reduced-motion="true"] *, .app-shell[data-reduced-motion="true"] *::before, .app-shell[data-reduced-motion="true"] *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+.app-shell[data-density="compact"] .panel { padding: var(--space-3); }
+.app-shell[data-density="compact"] .nav-link { min-height: 2.25rem; }
+.app-shell[data-large-text="true"] { font-size: 112.5%; }
+.app-shell[data-contrast="high"] { --line: hsl(220 20% 45%); --muted: hsl(220 20% 22%); }
+.app-shell[data-input-mode="keyboard_first"] :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }

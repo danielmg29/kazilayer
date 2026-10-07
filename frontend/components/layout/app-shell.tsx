@@ -7,6 +7,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { apiRequest, loadMe } from "@/lib/accounts/api";
 import type { MeResponse } from "@/lib/accounts/types";
 
+type AccessibilityPreference = { reduced_motion: boolean; density: string; contrast_mode: string; input_mode: string; large_text: boolean };
+
 const navigation = [
   { key: "overview", label: "Overview", mark: "OV", action: "organization.view" },
   { key: "members", label: "People", mark: "PE", action: "membership.list" },
@@ -38,6 +40,7 @@ export function AppShell({ children, tenantSlug = "meridian-field-services" }: {
   const pathname = usePathname();
   const router = useRouter();
   const [identity, setIdentity] = useState<MeResponse | null>(null);
+  const [accessibility, setAccessibility] = useState<AccessibilityPreference | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const membership = useMemo(
     () => identity?.memberships.find((item) => item.organization.slug === tenantSlug),
@@ -46,9 +49,12 @@ export function AppShell({ children, tenantSlug = "meridian-field-services" }: {
 
   useEffect(() => {
     const refreshIdentity = () => loadMe().then(setIdentity).catch(() => router.replace("/login"));
+    const refreshAccessibility = () => apiRequest<{ preference: AccessibilityPreference }>("/api/v1/accessibility-preferences/").then((result) => setAccessibility(result.preference)).catch(() => undefined);
     void refreshIdentity();
+    void refreshAccessibility();
     window.addEventListener("kazilayer:profile-updated", refreshIdentity);
-    return () => window.removeEventListener("kazilayer:profile-updated", refreshIdentity);
+    window.addEventListener("kazilayer:accessibility-updated", refreshAccessibility);
+    return () => { window.removeEventListener("kazilayer:profile-updated", refreshIdentity); window.removeEventListener("kazilayer:accessibility-updated", refreshAccessibility); };
   }, [router]);
 
   const base = `/${membership?.organization.slug ?? tenantSlug}`;
@@ -73,7 +79,7 @@ export function AppShell({ children, tenantSlug = "meridian-field-services" }: {
   }
 
   return (
-    <div className="app-shell min-h-screen bg-canvas text-ink" data-sidebar-collapsed={collapsed}>
+    <div className="app-shell min-h-screen bg-canvas text-ink" data-sidebar-collapsed={collapsed} data-density={accessibility?.density} data-contrast={accessibility?.contrast_mode} data-input-mode={accessibility?.input_mode} data-large-text={accessibility?.large_text} data-reduced-motion={accessibility?.reduced_motion}>
       <aside className="sidebar">
         <div className="sidebar-brand">
           <Link href={base} aria-label="KaziLayer overview" className="sidebar-logo-link">
