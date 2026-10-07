@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "storages",
     "apps.accounts",
     "apps.operations",
+    "apps.convergence",
 ]
 
 MIDDLEWARE = [

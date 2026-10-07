@@ -593,7 +593,9 @@ def notifications(request, slug):
 
 @require_http_methods(["GET", "POST"])
 def notification_preferences(request, slug):
-    _membership, response = membership_or_error(request, slug, "notification.preference")
+    _membership, response = membership_or_error(
+        request, slug, "notification.preference"
+    )
     if response:
         return response
     if request.method == "POST":

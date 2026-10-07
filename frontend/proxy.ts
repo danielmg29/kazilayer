@@ -16,6 +16,13 @@ const sectionActions: Record<string, string | null> = {
   audit: "audit.list",
   "work-orders": "work_order.list",
   notifications: "notification.list",
+  contracts: "contract.list",
+  "dynamic-forms": "dynamic_form.use",
+  "adaptive-views": "view_recipe.list",
+  dashboards: "dashboard.list",
+  integrations: "webhook.list",
+  realtime: "realtime.subscribe",
+  "bulk-operations": "bulk.list",
 };
 
 const publicRoots = new Set(["api", "_next", "login", "password-reset", "design-system", "logo", "fonts"]);

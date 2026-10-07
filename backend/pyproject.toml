@@ -52,3 +52,5 @@ addopts = "--strict-markers"
 "apps/accounts/models.py" = ["RUF012"]
 "apps/operations/migrations/*.py" = ["RUF012"]
 "apps/operations/models.py" = ["RUF012"]
+"apps/convergence/migrations/*.py" = ["RUF012"]
+"apps/convergence/models.py" = ["RUF012"]

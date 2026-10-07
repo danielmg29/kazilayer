@@ -17,6 +17,13 @@ KaziLayer is a multi-tenant service-operations control centre for organisations 
 - **KL-F-20 Audit ledger:** immutable, append-only events with redacted before/after summaries.
 - **KL-F-08 Work lifecycle:** guarded state transitions, evidence requirements, rich instructions and completion summaries.
 - **KL-F-17 Notifications:** preferences, restricted-rich-text templates, deduplication and tenant delivery records.
+- **KL-F-04 Contract registry:** immutable published contract versions, ordered field definitions, workflow metadata and sanitised rich-text change notes.
+- **KL-F-05 Dynamic forms:** runtime create/edit/review state and generated controls from published contract fields; `rich_text` fields resolve to WYSIWYG controls.
+- **KL-F-06 Adaptive record views:** reusable semantic recipes for summary, detail and compact mobile projections.
+- **KL-F-15 Operational dashboards:** backend-owned metric definitions composed into dashboard widgets and responsive chart projections.
+- **KL-F-21 Integration webhooks:** HTTPS-only endpoints, encrypted signing secrets, secret rotation and bounded delivery logs.
+- **KL-F-18 Realtime updates:** sequenced tenant streams, bounded polling, gap detection and refetch instructions.
+- **KL-F-12 Bulk operations:** bounded explicit selections or frozen query snapshots, server-side preview counts and progress state.
 - Tenant-aware profile, people, role policy, saved views and organisation settings pages.
 - A responsive Swiss technical, modular Bento and blueprint visual system.
 
@@ -40,6 +47,7 @@ uv sync --dev
 .\.venv\Scripts\python.exe manage.py migrate
 .\.venv\Scripts\python.exe manage.py seed_kazilayer
 .\.venv\Scripts\python.exe manage.py seed_operations
+.\.venv\Scripts\python.exe manage.py seed_convergence
 .\.venv\Scripts\python.exe manage.py runserver 8000
 ```
 
@@ -73,6 +81,8 @@ The seed also creates an SLA-risk work-order view for the dispatcher and an acti
 
 `seed_operations` adds, per tenant, one customer request, one scheduled work order with transition history, one sanitised rich-text comment, one evidence metadata record, one feedback item, one search document, one completed import, one completed export, one immutable audit event, notification preferences and four deduplicated in-app notifications. It also extends each role with only the operational actions appropriate to that identity.
 
+`seed_convergence` adds, per tenant, one published maintenance-work-order contract with four generated fields, three responsive view recipes, two reusable metric definitions, an organisation dashboard, two metric widgets, a disabled HTTPS webhook with one successful delivery log, two sequenced realtime events, and one completed bounded bulk export. Signing secrets are encrypted and never included in seed output.
+
 ## Operational feature URLs
 
 Replace `{tenant}` with `meridian-field-services` or `rift-valley-facilities`.
@@ -88,6 +98,13 @@ Replace `{tenant}` with `meridian-field-services` or `rift-valley-facilities`.
 | Audit ledger | `/{tenant}/audit` |
 | Work lifecycle | `/{tenant}/work-orders` |
 | Notifications | `/{tenant}/notifications` |
+| Contract registry | `/{tenant}/contracts` |
+| Dynamic forms | `/{tenant}/dynamic-forms` |
+| Adaptive record views | `/{tenant}/adaptive-views` |
+| Operational dashboards | `/{tenant}/dashboards` |
+| Integration webhooks | `/{tenant}/integrations` |
+| Realtime updates | `/{tenant}/realtime` |
+| Bulk operations | `/{tenant}/bulk-operations` |
 
 Rich-text HTML is never accepted as trusted browser output. The backend allow-lists supported elements and attributes and derives plain-text projections for search, export, accessibility and notification snippets.
 

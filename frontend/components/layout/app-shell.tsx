@@ -21,6 +21,13 @@ const navigation = [
   { key: "audit", label: "Audit", mark: "AU", action: "audit.list" },
   { key: "notifications", label: "Notifications", mark: "NT", action: "notification.list" },
   { key: "feedback", label: "Feedback", mark: "FB", action: "feedback.create" },
+  { key: "contracts", label: "Contracts", mark: "CT", action: "contract.list" },
+  { key: "dynamic-forms", label: "Dynamic forms", mark: "DF", action: "dynamic_form.use" },
+  { key: "adaptive-views", label: "View recipes", mark: "VR", action: "view_recipe.list" },
+  { key: "dashboards", label: "Dashboards", mark: "DB", action: "dashboard.list" },
+  { key: "integrations", label: "Integrations", mark: "IN", action: "webhook.list" },
+  { key: "realtime", label: "Realtime", mark: "RT", action: "realtime.subscribe" },
+  { key: "bulk-operations", label: "Bulk operations", mark: "BK", action: "bulk.list" },
   { key: "settings", label: "Settings", mark: "ST", action: "organization.update" },
 ] as const;
 
