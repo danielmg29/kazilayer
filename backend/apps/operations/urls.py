@@ -20,4 +20,10 @@ urlpatterns = [
         "organizations/<slug:slug>/operations/notification-preferences/",
         api.notification_preferences,
     ),
+    path("organizations/<slug:slug>/operations/sla-policies/", api.sla_policies),
+    path(
+        "organizations/<slug:slug>/operations/work-orders/<uuid:work_order_id>/apply-sla/",
+        api.apply_sla,
+    ),
+    path("organizations/<slug:slug>/operations/dispatch/", api.dispatch_board),
 ]

@@ -21,6 +21,10 @@ KaziLayer is a multi-tenant service-operations control centre for organisations 
 - **KL-F-05 Dynamic forms:** runtime create/edit/review state and generated controls from published contract fields; `rich_text` fields resolve to WYSIWYG controls.
 - **KL-F-06 Adaptive record views:** reusable semantic recipes for summary, detail and compact mobile projections.
 - **KL-F-15 Operational dashboards:** backend-owned metric definitions composed into dashboard widgets and responsive chart projections.
+- **KL-F-09 Dispatch board:** live capacity lanes, bounded board queries, transactional overlap checks and keyboard-friendly schedule controls.
+- **KL-F-10 SLA engine:** versioned business calendars, deterministic response/completion deadlines and auditable clock events.
+- **KL-F-23 Accessibility preferences:** user-owned motion, density, contrast, input and large-text preferences isolated from domain records.
+- **KL-F-24 Handover documentation:** repository-owned architecture, API/data and operations runbooks with a review index.
 - **KL-F-21 Integration webhooks:** HTTPS-only endpoints, encrypted signing secrets, secret rotation and bounded delivery logs.
 - **KL-F-18 Realtime updates:** sequenced tenant streams, bounded polling, gap detection and refetch instructions.
 - **KL-F-12 Bulk operations:** bounded explicit selections or frozen query snapshots, server-side preview counts and progress state.
@@ -48,6 +52,7 @@ uv sync --dev
 .\.venv\Scripts\python.exe manage.py seed_kazilayer
 .\.venv\Scripts\python.exe manage.py seed_operations
 .\.venv\Scripts\python.exe manage.py seed_convergence
+.\.venv\Scripts\python.exe manage.py seed_neon_demo
 .\.venv\Scripts\python.exe manage.py runserver 8000
 ```
 
@@ -83,6 +88,8 @@ The seed also creates an SLA-risk work-order view for the dispatcher and an acti
 
 `seed_convergence` adds, per tenant, one published maintenance-work-order contract with four generated fields, three responsive view recipes, two reusable metric definitions, an organisation dashboard, two metric widgets, a disabled HTTPS webhook with one successful delivery log, two sequenced realtime events, and one completed bounded bulk export. Signing secrets are encrypted and never included in seed output.
 
+`seed_neon_demo` is the separate, idempotent expanded dataset intended for a fresh Neon PostgreSQL migration. It runs every foundational seed and then adds, per tenant, four versioned SLA policies, two technician profiles, twelve additional requests/work packages, six non-overlapping assignments, SLA clock history, and per-user accessibility preferences.
+
 ## Operational feature URLs
 
 Replace `{tenant}` with `meridian-field-services` or `rift-valley-facilities`.
@@ -105,6 +112,9 @@ Replace `{tenant}` with `meridian-field-services` or `rift-valley-facilities`.
 | Integration webhooks | `/{tenant}/integrations` |
 | Realtime updates | `/{tenant}/realtime` |
 | Bulk operations | `/{tenant}/bulk-operations` |
+| SLA policy engine | `/{tenant}/sla` |
+| Dispatch board | `/{tenant}/dispatch` |
+| Accessibility preferences | `/{tenant}/accessibility` |
 
 Rich-text HTML is never accepted as trusted browser output. The backend allow-lists supported elements and attributes and derives plain-text projections for search, export, accessibility and notification snippets.
 

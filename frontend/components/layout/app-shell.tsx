@@ -28,6 +28,9 @@ const navigation = [
   { key: "integrations", label: "Integrations", mark: "IN", action: "webhook.list" },
   { key: "realtime", label: "Realtime", mark: "RT", action: "realtime.subscribe" },
   { key: "bulk-operations", label: "Bulk operations", mark: "BK", action: "bulk.list" },
+  { key: "sla", label: "SLA policies", mark: "SL", action: "sla.list" },
+  { key: "dispatch", label: "Dispatch", mark: "DP", action: "dispatch.view" },
+  { key: "accessibility", label: "Accessibility", mark: "AX", action: null },
   { key: "settings", label: "Settings", mark: "ST", action: "organization.update" },
 ] as const;
 
@@ -93,7 +96,7 @@ export function AppShell({ children, tenantSlug = "meridian-field-services" }: {
 
         <nav className="sidebar-nav" aria-label="Primary navigation">
           {navigation
-            .filter((item) => enabled.has(item.key) && allowed.has(item.action))
+            .filter((item) => enabled.has(item.key) && (item.action === null || allowed.has(item.action)))
             .map((item, index) => {
               const href = item.key === "overview" ? base : `${base}/${item.key}`;
               return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { apiRequest } from "@/lib/accounts/api";
 import { ErrorState, LoadingState } from "@/components/kernel/projection";
@@ -26,30 +26,28 @@ export function ConvergenceWorkspace({ tenantSlug, section }: { tenantSlug: stri
   const [lastSequence, setLastSequence] = useState(0);
   const base = `/api/v1/organizations/${tenantSlug}/convergence`;
 
-  function endpoint() {
+  const endpoint = useCallback(() => {
     if (section === "dynamic-forms") return `${base}/dynamic-forms/maintenance-work-order/`;
     if (section === "adaptive-views") return `${base}/view-recipes/`;
     if (section === "integrations") return `${base}/webhooks/`;
     if (section === "realtime") return `${base}/realtime/?stream=tenant:${tenantSlug}&after=${lastSequence}`;
     return `${base}/${section}/`;
-  }
+  }, [base, lastSequence, section, tenantSlug]);
 
-  async function load() {
+  const load = useCallback(async () => {
     try {
       const result = await apiRequest<Data>(endpoint());
       setData((current) => section === "realtime" && current ? mergeRealtime(current, result) : result);
       if (section === "realtime") setLastSequence(Number(result.last_sequence ?? 0));
       setError("");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "The projection could not be loaded."); }
-  }
+  }, [endpoint, section]);
 
-  // Section and tenant changes own the fetch lifecycle.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const timer = window.setTimeout(() => void load(), 0);
     const interval = section === "realtime" ? window.setInterval(() => void load(), 10000) : undefined;
     return () => { window.clearTimeout(timer); if (interval) window.clearInterval(interval); };
-  }, [tenantSlug, section, lastSequence]);
+  }, [load, section]);
 
   async function post(path: string, values: Data) {
     try {

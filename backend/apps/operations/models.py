@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from apps.accounts.models import Organization
 
@@ -304,6 +305,16 @@ class WorkOrder(TenantModel):
     customer_id = models.UUIDField(null=True, blank=True)
     scheduled_start_at = models.DateTimeField(null=True, blank=True)
     scheduled_end_at = models.DateTimeField(null=True, blank=True)
+    sla_policy = models.ForeignKey(
+        "SlaPolicy",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="work_orders",
+    )
+    response_due_at = models.DateTimeField(null=True, blank=True)
+    completion_due_at = models.DateTimeField(null=True, blank=True)
+    sla_status = models.CharField(max_length=16, blank=True)
     completion_summary = RichTextField(blank=True)
     plain_completion_summary = models.TextField(blank=True, editable=False)
     version = models.PositiveIntegerField(default=1)
@@ -315,6 +326,122 @@ class WorkOrder(TenantModel):
         self.plain_instructions = rich_text_to_plain(self.instructions)
         self.plain_completion_summary = rich_text_to_plain(self.completion_summary)
         super().save(*args, **kwargs)
+
+
+class SlaPolicy(TenantModel):
+    name = models.CharField(max_length=160)
+    priority_key = models.CharField(max_length=20)
+    response_minutes = models.PositiveIntegerField()
+    completion_minutes = models.PositiveIntegerField()
+    business_calendar_json = models.JSONField(default=dict)
+    pause_state_keys = models.JSONField(default=list, blank=True)
+    effective_from = models.DateTimeField()
+    effective_to = models.DateTimeField(null=True, blank=True)
+    version = models.PositiveIntegerField(default=1)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["organization", "priority_key", "version"],
+                name="operations_sla_policy_priority_version_uniq",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["organization", "priority_key", "effective_from"])
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.completion_minutes < self.response_minutes:
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError(
+                {
+                    "completion_minutes": "Completion target cannot be shorter than response target."
+                }
+            )
+        if self.effective_to and self.effective_to <= self.effective_from:
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError(
+                {"effective_to": "Effective end must follow effective start."}
+            )
+
+
+class SlaClockEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    work_order = models.ForeignKey(
+        WorkOrder, on_delete=models.CASCADE, related_name="sla_clock_events"
+    )
+    event_type = models.CharField(max_length=32)
+    policy_version = models.PositiveIntegerField()
+    reason = models.TextField(blank=True, max_length=2000)
+    occurred_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [models.Index(fields=["work_order", "occurred_at"])]
+
+
+class Technician(TenantModel):
+    membership = models.OneToOneField(
+        "accounts.Membership",
+        on_delete=models.PROTECT,
+        related_name="technician_profile",
+    )
+    display_name = models.CharField(max_length=160)
+    skills_json = models.JSONField(default=list, blank=True)
+    availability_json = models.JSONField(default=dict, blank=True)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["organization", "is_active"])]
+
+
+class Assignment(TenantModel):
+    work_order = models.ForeignKey(
+        WorkOrder, on_delete=models.CASCADE, related_name="assignments"
+    )
+    technician = models.ForeignKey(
+        Technician, on_delete=models.PROTECT, related_name="assignments"
+    )
+    start_at = models.DateTimeField()
+    end_at = models.DateTimeField()
+    status = models.CharField(
+        max_length=16,
+        default="scheduled",
+        choices=[
+            (value, value.title())
+            for value in ("scheduled", "accepted", "active", "completed", "cancelled")
+        ],
+    )
+    assigned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    reason = models.TextField(blank=True, max_length=2000)
+    version = models.PositiveIntegerField(default=1)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["organization", "start_at", "end_at"]),
+            models.Index(fields=["technician", "start_at", "end_at"]),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.end_at and self.start_at and self.end_at <= self.start_at:
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError({"end_at": "Assignment end must follow its start."})
+        if (
+            self.technician_id
+            and self.organization_id != self.technician.organization_id
+        ):
+            from django.core.exceptions import ValidationError
+
+            raise ValidationError(
+                {"technician": "Technician must belong to the assignment tenant."}
+            )
 
 
 class WorkTransition(models.Model):

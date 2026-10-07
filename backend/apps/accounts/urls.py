@@ -14,6 +14,7 @@ urlpatterns = [
     path("auth/sessions/<uuid:session_id>/", api.revoke_session),
     path("me/", api.me),
     path("profile/", api.profile),
+    path("accessibility-preferences/", api.accessibility_preferences),
     path("organizations/<slug:slug>/", api.organization_detail),
     path("organizations/<slug:slug>/memberships/", api.memberships),
     path("organizations/<slug:slug>/role-policies/", api.role_policies),

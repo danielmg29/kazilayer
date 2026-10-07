@@ -14,6 +14,7 @@ from django.views.decorators.http import require_http_methods
 from core.contract.registry import validate_saved_view_definition
 
 from .models import (
+    AccessibilityPreference,
     AccountSession,
     AppUser,
     Membership,
@@ -562,6 +563,38 @@ def saved_view_detail(request, slug, view_id):
         item.full_clean()
         item.save()
     return JsonResponse({"saved_view": serialize_saved_view(item)})
+
+
+@require_http_methods(["GET", "PATCH"])
+def accessibility_preferences(request):
+    if not request.user.is_authenticated:
+        return error("Authentication required", 401, "UNAUTHENTICATED")
+    item, _ = AccessibilityPreference.objects.get_or_create(user=request.user)
+    if request.method == "PATCH":
+        payload = body(request)
+        for field in (
+            "reduced_motion",
+            "density",
+            "contrast_mode",
+            "input_mode",
+            "large_text",
+        ):
+            if field in payload:
+                setattr(item, field, payload[field])
+        item.full_clean()
+        item.save()
+    return JsonResponse(
+        {
+            "preference": {
+                "reduced_motion": item.reduced_motion,
+                "density": item.density,
+                "contrast_mode": item.contrast_mode,
+                "input_mode": item.input_mode,
+                "large_text": item.large_text,
+                "updated_at": item.updated_at.isoformat(),
+            }
+        }
+    )
 
 
 def serialize_saved_view(item):

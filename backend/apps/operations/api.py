@@ -1,5 +1,6 @@
 import hashlib
 import uuid
+from datetime import datetime
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -11,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 from apps.accounts.api import body, error, membership_or_error
 
 from .models import (
+    Assignment,
     AuditEvent,
     Comment,
     ExportJob,
@@ -20,10 +22,14 @@ from .models import (
     NotificationPreference,
     SearchDocument,
     ServiceRequest,
+    SlaClockEvent,
+    SlaPolicy,
+    Technician,
     UserFeedback,
     WorkOrder,
     WorkTransition,
 )
+from .scheduling import add_business_minutes
 
 
 def value(item, field):
@@ -627,3 +633,302 @@ def notification_preferences(request, slug):
             ]
         }
     )
+
+
+@require_http_methods(["GET", "POST"])
+def sla_policies(request, slug):
+    membership, response = membership_or_error(
+        request, slug, "sla.list" if request.method == "GET" else "sla.manage"
+    )
+    if response:
+        return response
+    if request.method == "POST":
+        payload = body(request)
+        latest = (
+            SlaPolicy.objects.filter(
+                organization=membership.organization,
+                priority_key=payload.get("priority_key", "normal"),
+            )
+            .order_by("-version")
+            .first()
+        )
+        item = SlaPolicy(
+            organization=membership.organization,
+            name=str(payload.get("name", ""))[:160],
+            priority_key=payload.get("priority_key", "normal"),
+            response_minutes=int(payload.get("response_minutes", 60)),
+            completion_minutes=int(payload.get("completion_minutes", 480)),
+            business_calendar_json=payload.get("business_calendar", {}),
+            pause_state_keys=payload.get("pause_state_keys", []),
+            effective_from=payload.get("effective_from") or timezone.now(),
+            version=(latest.version + 1) if latest else 1,
+        )
+        validated_save(item)
+        return JsonResponse(
+            {
+                "policy": projection(
+                    item,
+                    (
+                        "name",
+                        "priority_key",
+                        "response_minutes",
+                        "completion_minutes",
+                        "business_calendar_json",
+                        "pause_state_keys",
+                        "effective_from",
+                        "version",
+                    ),
+                )
+            },
+            status=201,
+        )
+    rows = SlaPolicy.objects.filter(organization=membership.organization).order_by(
+        "priority_key", "-version"
+    )[:100]
+    return JsonResponse(
+        {
+            "policies": [
+                projection(
+                    item,
+                    (
+                        "name",
+                        "priority_key",
+                        "response_minutes",
+                        "completion_minutes",
+                        "business_calendar_json",
+                        "pause_state_keys",
+                        "effective_from",
+                        "effective_to",
+                        "version",
+                    ),
+                )
+                for item in rows
+            ]
+        }
+    )
+
+
+@require_http_methods(["POST"])
+def apply_sla(request, slug, work_order_id):
+    membership, response = membership_or_error(request, slug, "sla.apply")
+    if response:
+        return response
+    with transaction.atomic():
+        item = (
+            WorkOrder.objects.select_for_update()
+            .filter(id=work_order_id, organization=membership.organization)
+            .first()
+        )
+        if item is None:
+            return error("Work order not found", 404, "NOT_FOUND")
+        policy = (
+            SlaPolicy.objects.filter(
+                organization=membership.organization,
+                priority_key=item.priority,
+                effective_from__lte=item.created_at,
+            )
+            .order_by("-version")
+            .first()
+        )
+        if policy is None:
+            return error(
+                "No effective SLA policy exists for this priority",
+                409,
+                "SLA_POLICY_MISSING",
+            )
+        item.sla_policy = policy
+        item.response_due_at = add_business_minutes(
+            item.created_at, policy.response_minutes, policy.business_calendar_json
+        )
+        item.completion_due_at = add_business_minutes(
+            item.created_at, policy.completion_minutes, policy.business_calendar_json
+        )
+        item.sla_status = "on_track"
+        item.version += 1
+        item.save()
+        SlaClockEvent.objects.create(
+            work_order=item,
+            event_type="started",
+            policy_version=policy.version,
+            reason="Policy applied deterministically",
+        )
+    return JsonResponse(
+        {
+            "work_order": projection(
+                item,
+                (
+                    "sla_policy_id",
+                    "response_due_at",
+                    "completion_due_at",
+                    "sla_status",
+                    "version",
+                ),
+            )
+        }
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def dispatch_board(request, slug):
+    membership, response = membership_or_error(
+        request, slug, "dispatch.view" if request.method == "GET" else "dispatch.assign"
+    )
+    if response:
+        return response
+    if request.method == "POST":
+        payload = body(request)
+        try:
+            start_at = datetime.fromisoformat(str(payload.get("start_at", "")))
+            end_at = datetime.fromisoformat(str(payload.get("end_at", "")))
+        except ValueError:
+            return error("Valid timezone-aware start and end times are required")
+        if timezone.is_naive(start_at) or timezone.is_naive(end_at):
+            return error("Assignment times must include a timezone offset")
+        with transaction.atomic():
+            existing = None
+            if payload.get("assignment_id"):
+                existing = (
+                    Assignment.objects.select_for_update()
+                    .filter(
+                        id=payload["assignment_id"],
+                        organization=membership.organization,
+                    )
+                    .first()
+                )
+                if existing is None:
+                    return error("Assignment not found", 404, "NOT_FOUND")
+                if int(payload.get("expected_version", 0)) != existing.version:
+                    return error(
+                        "Assignment changed since the board was loaded",
+                        409,
+                        "VERSION_CONFLICT",
+                    )
+            technician = (
+                Technician.objects.select_for_update()
+                .filter(
+                    id=payload.get("technician_id"),
+                    organization=membership.organization,
+                    is_active=True,
+                )
+                .first()
+            )
+            work_order = (
+                WorkOrder.objects.select_for_update()
+                .filter(
+                    id=payload.get("work_order_id"),
+                    organization=membership.organization,
+                )
+                .first()
+            )
+            if technician is None or work_order is None:
+                return error("Technician or work order not found", 404, "NOT_FOUND")
+            conflict = Assignment.objects.filter(
+                technician=technician,
+                status__in=["scheduled", "accepted", "active"],
+                start_at__lt=end_at,
+                end_at__gt=start_at,
+            )
+            if existing:
+                conflict = conflict.exclude(id=existing.id)
+            conflict = conflict.exists()
+            if conflict:
+                return error(
+                    "The technician already has an overlapping assignment",
+                    409,
+                    "SCHEDULE_CONFLICT",
+                )
+            item = existing or Assignment(
+                organization=membership.organization,
+                work_order=work_order,
+                assigned_by=request.user,
+            )
+            item.work_order = work_order
+            item.technician = technician
+            item.start_at = start_at
+            item.end_at = end_at
+            item.reason = str(payload.get("reason", ""))
+            if existing:
+                item.version += 1
+            validated_save(item)
+            work_order.scheduled_start_at, work_order.scheduled_end_at = (
+                start_at,
+                end_at,
+            )
+            work_order.status, work_order.version = "scheduled", work_order.version + 1
+            work_order.save()
+        return JsonResponse({"assignment": serialize_assignment(item)}, status=201)
+    technicians = list(
+        Technician.objects.filter(
+            organization=membership.organization, is_active=True
+        ).select_related("membership__user")[:100]
+    )
+    assignments = list(
+        Assignment.objects.filter(organization=membership.organization)
+        .select_related("technician", "work_order")
+        .order_by("start_at")[:200]
+    )
+    unscheduled = WorkOrder.objects.filter(
+        organization=membership.organization, assignments__isnull=True
+    ).order_by("-created_at")[:100]
+    return JsonResponse(
+        {
+            "technicians": [
+                {
+                    **projection(
+                        item,
+                        (
+                            "display_name",
+                            "skills_json",
+                            "availability_json",
+                            "is_active",
+                        ),
+                    ),
+                    "assignments": [
+                        serialize_assignment(row)
+                        for row in assignments
+                        if row.technician_id == item.id
+                    ],
+                }
+                for item in technicians
+            ],
+            "unscheduled": [
+                projection(
+                    item,
+                    (
+                        "title",
+                        "priority",
+                        "status",
+                        "sla_status",
+                        "response_due_at",
+                        "completion_due_at",
+                        "version",
+                    ),
+                )
+                for item in unscheduled
+            ],
+            "capacity_snapshot": {
+                "technician_count": len(technicians),
+                "assignment_count": len(assignments),
+                "bounded": True,
+            },
+        }
+    )
+
+
+def serialize_assignment(item):
+    return {
+        **projection(
+            item,
+            (
+                "work_order_id",
+                "technician_id",
+                "start_at",
+                "end_at",
+                "status",
+                "reason",
+                "version",
+            ),
+        ),
+        "title": item.work_order.title,
+        "technician_name": item.technician.display_name,
+    }

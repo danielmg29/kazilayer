@@ -221,3 +221,37 @@ class SavedView(models.Model):
             ),
         ]
         ordering = ["module_key", "name"]
+
+
+class AccessibilityPreference(models.Model):
+    """Presentation-only preferences, intentionally separate from tenant business data."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        AppUser, on_delete=models.CASCADE, related_name="accessibility_preference"
+    )
+    reduced_motion = models.BooleanField(default=False)
+    density = models.CharField(
+        max_length=20,
+        default="system_default",
+        choices=[
+            (value, value.replace("_", " ").title())
+            for value in ("comfortable", "compact", "system_default")
+        ],
+    )
+    contrast_mode = models.CharField(
+        max_length=16,
+        default="system",
+        choices=[(value, value.title()) for value in ("system", "standard", "high")],
+    )
+    input_mode = models.CharField(
+        max_length=20,
+        default="auto",
+        choices=[
+            (value, value.replace("_", " ").title())
+            for value in ("auto", "keyboard_first", "pointer_first", "touch_first")
+        ],
+    )
+    large_text = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

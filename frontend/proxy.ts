@@ -23,6 +23,9 @@ const sectionActions: Record<string, string | null> = {
   integrations: "webhook.list",
   realtime: "realtime.subscribe",
   "bulk-operations": "bulk.list",
+  sla: "sla.list",
+  dispatch: "dispatch.view",
+  accessibility: null,
 };
 
 const publicRoots = new Set(["api", "_next", "login", "password-reset", "design-system", "logo", "fonts"]);
