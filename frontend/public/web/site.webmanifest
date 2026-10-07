@@ -1,0 +1,20 @@
+{
+  "name": "KaziLayer",
+  "short_name": "KaziLayer",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F7FC",
+  "theme_color": "#283C78",
+  "icons": [
+    {
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

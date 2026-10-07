@@ -1,0 +1,54 @@
+[project]
+name = "kazilayer-api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Daniel Gichovi", email = "ddantez18@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "bleach>=6.4.0",
+    "boto3>=1.43.108",
+    "channels>=4",
+    "channels-redis>=4",
+    "cryptography>=50.0.2",
+    "django>=6.1,<6.2",
+    "django-environ>=0.14.0",
+    "django-storages>=1.14.6",
+    "django-tasks>=0.12.0",
+    "livekit-api>=1.2.1",
+    "pillow>=12.3.0",
+    "psycopg[binary,pool]>=3.3.6",
+    "redis>=5",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+kazilayer-api = "kazilayer_api:main"
+
+[build-system]
+requires = ["uv_build>=0.12.10,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "factory-boy>=3.3.3",
+    "hypothesis>=6.168.4",
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-django>=4.14.0",
+    "ruff>=0.16.10",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+addopts = "--strict-markers"
+
+[tool.ruff.lint.per-file-ignores]
+"apps/accounts/migrations/*.py" = ["RUF012"]
+"apps/accounts/models.py" = ["RUF012"]
+"apps/operations/migrations/*.py" = ["RUF012"]
+"apps/operations/models.py" = ["RUF012"]

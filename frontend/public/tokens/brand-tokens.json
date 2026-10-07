@@ -1,0 +1,83 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "brand": {
+    "name": "KaziLayer",
+    "tagline": "Work in one flow",
+    "color": {
+      "primary": {
+        "$value": "#283C78",
+        "$type": "color"
+      },
+      "accent": {
+        "$value": "#36D3A0",
+        "$type": "color"
+      },
+      "ink": {
+        "$value": "#111827",
+        "$type": "color"
+      },
+      "surface": {
+        "$value": "#F4F7FC",
+        "$type": "color"
+      },
+      "focus": {
+        "$value": "#36D3A0",
+        "$type": "color"
+      }
+    },
+    "radius": {
+      "small": {
+        "$value": "8px",
+        "$type": "dimension"
+      },
+      "medium": {
+        "$value": "14px",
+        "$type": "dimension"
+      },
+      "large": {
+        "$value": "24px",
+        "$type": "dimension"
+      }
+    },
+    "spacing": {
+      "1": {
+        "$value": "4px",
+        "$type": "dimension"
+      },
+      "2": {
+        "$value": "8px",
+        "$type": "dimension"
+      },
+      "3": {
+        "$value": "12px",
+        "$type": "dimension"
+      },
+      "4": {
+        "$value": "16px",
+        "$type": "dimension"
+      },
+      "5": {
+        "$value": "20px",
+        "$type": "dimension"
+      },
+      "6": {
+        "$value": "24px",
+        "$type": "dimension"
+      },
+      "7": {
+        "$value": "28px",
+        "$type": "dimension"
+      },
+      "8": {
+        "$value": "32px",
+        "$type": "dimension"
+      }
+    },
+    "type": {
+      "recommendation": {
+        "$value": "Manrope for product headings and Inter for interface text",
+        "$type": "string"
+      }
+    }
+  }
+}
