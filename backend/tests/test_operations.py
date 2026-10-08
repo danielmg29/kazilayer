@@ -5,7 +5,7 @@ from django.test import Client
 from django.utils import timezone
 
 from apps.accounts.models import AppUser, Membership, Organization, RolePolicy
-from apps.operations.models import Comment, ServiceRequest, WorkOrder
+from apps.operations.models import Comment, ServiceRequest, UserFeedback, WorkOrder
 
 
 @pytest.fixture
@@ -122,3 +122,34 @@ def test_role_without_action_cannot_open_work_orders(operation_tenant):
         f"/api/v1/organizations/{organization.slug}/operations/work-orders/"
     )
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_feedback_creator_can_read_only_their_own_submissions(operation_tenant):
+    organization, staff, customer = operation_tenant
+    membership = customer.memberships.select_related("role_policy").get(
+        organization=organization
+    )
+    membership.role_policy.allowed_actions = ["feedback.create"]
+    membership.role_policy.save(update_fields=["allowed_actions", "updated_at"])
+    own = UserFeedback.objects.create(
+        organization=organization,
+        user=customer,
+        route="/customer",
+        category="usability",
+        message="My feedback",
+    )
+    UserFeedback.objects.create(
+        organization=organization,
+        user=staff,
+        route="/staff",
+        category="bug",
+        message="Staff feedback",
+    )
+    client = Client()
+    client.force_login(customer)
+    response = client.get(
+        f"/api/v1/organizations/{organization.slug}/operations/feedback/"
+    )
+    assert response.status_code == 200
+    assert [row["id"] for row in response.json()["feedback"]] == [str(own.id)]

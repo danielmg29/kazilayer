@@ -30,7 +30,9 @@ export function OperationsWorkspace({ tenantSlug, section }: { tenantSlug: strin
   async function load(query = "") {
     try {
       setError("");
-      if (section === "notifications") {
+      if (section === "feedback") {
+        setPayload({});
+      } else if (section === "notifications") {
         const [notifications, preferences] = await Promise.all([
           apiRequest<Record<string, unknown>>(endpoint),
           apiRequest<Record<string, unknown>>(`/api/v1/organizations/${tenantSlug}/operations/notification-preferences/`),

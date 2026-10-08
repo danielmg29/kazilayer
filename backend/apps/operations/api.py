@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from apps.accounts.api import body, error, membership_or_error
+from apps.accounts.policies import has_action
 
 from .models import (
     Assignment,
@@ -64,11 +65,18 @@ def validated_save(item):
 
 @require_http_methods(["GET", "POST"])
 def feedback(request, slug):
-    membership, response = membership_or_error(
-        request, slug, "feedback.list" if request.method == "GET" else "feedback.create"
-    )
+    membership, response = membership_or_error(request, slug)
     if response:
         return response
+    required_action = "feedback.list" if request.method == "GET" else "feedback.create"
+    if not has_action(membership, required_action) and (
+        request.method != "GET" or not has_action(membership, "feedback.create")
+    ):
+        return error(
+            f"The active membership does not allow {required_action}",
+            403,
+            "FORBIDDEN",
+        )
     if request.method == "POST":
         payload = body(request)
         item = UserFeedback(
@@ -92,9 +100,10 @@ def feedback(request, slug):
             },
             status=201,
         )
-    rows = UserFeedback.objects.filter(organization=membership.organization).order_by(
-        "-created_at"
-    )[:100]
+    rows = UserFeedback.objects.filter(organization=membership.organization)
+    if not has_action(membership, "feedback.list"):
+        rows = rows.filter(user=request.user)
+    rows = rows.order_by("-created_at")[:100]
     return JsonResponse(
         {
             "feedback": [

@@ -5,6 +5,7 @@ from django.test import Client
 from django.utils import timezone
 
 from apps.accounts.models import (
+    AccessibilityPreference,
     AppUser,
     Membership,
     Organization,
@@ -90,3 +91,14 @@ def test_saved_view_rejects_unknown_contract_field(tenant_data):
     )
     assert response.status_code == 400
     assert not SavedView.objects.exists()
+
+
+@pytest.mark.django_db
+def test_accessibility_preferences_route_creates_defaults(tenant_data):
+    user, _, _ = tenant_data
+    client = Client()
+    client.force_login(user)
+    response = client.get("/api/v1/accessibility-preferences/")
+    assert response.status_code == 200
+    assert response.json()["preference"]["density"] == "system_default"
+    assert AccessibilityPreference.objects.filter(user=user).exists()
