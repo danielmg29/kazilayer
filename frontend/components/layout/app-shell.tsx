@@ -116,7 +116,6 @@ export function AppShell({ children, tenantSlug = "meridian-field-services" }: {
 
         <div className="sidebar-utility">
           <Link title={collapsed ? "Profile" : undefined} aria-label={collapsed ? "Profile" : undefined} className={pathname === `${base}/profile` ? "nav-link nav-link-active" : "nav-link"} href={`${base}/profile`}><span className="nav-index">ID</span>{!collapsed ? <span>Profile</span> : null}</Link>
-          <Link title={collapsed ? "Design system" : undefined} aria-label={collapsed ? "Design system" : undefined} className="nav-link" href="/design-system"><span className="nav-index">DS</span>{!collapsed ? <span>Design system</span> : null}</Link>
           <button title={collapsed ? "Sign out" : undefined} aria-label="Sign out" className="nav-link w-full" type="button" onClick={signOut}><span className="nav-index">↪</span>{!collapsed ? <span>Sign out</span> : null}</button>
         </div>
       </aside>
