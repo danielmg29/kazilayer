@@ -42,6 +42,8 @@ export function AppShell({ children, tenantSlug = "meridian-field-services" }: {
   const [identity, setIdentity] = useState<MeResponse | null>(null);
   const [accessibility, setAccessibility] = useState<AccessibilityPreference | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutError, setSignOutError] = useState("");
   const membership = useMemo(
     () => identity?.memberships.find((item) => item.organization.slug === tenantSlug),
     [identity, tenantSlug],
@@ -74,8 +76,16 @@ export function AppShell({ children, tenantSlug = "meridian-field-services" }: {
     .toUpperCase() ?? "--";
 
   async function signOut() {
-    await apiRequest<{ ok: boolean }>("/api/v1/auth/logout/", { method: "POST", body: "{}" });
-    router.replace("/login");
+    try {
+      setSigningOut(true);
+      setSignOutError("");
+      await apiRequest<{ ok: boolean }>("/api/v1/auth/logout/", { method: "POST", body: "{}" });
+      router.replace("/login");
+      router.refresh();
+    } catch (cause) {
+      setSignOutError(cause instanceof Error ? cause.message : "Sign out failed. Please try again.");
+      setSigningOut(false);
+    }
   }
 
   return (
@@ -116,7 +126,6 @@ export function AppShell({ children, tenantSlug = "meridian-field-services" }: {
 
         <div className="sidebar-utility">
           <Link title={collapsed ? "Profile" : undefined} aria-label={collapsed ? "Profile" : undefined} className={pathname === `${base}/profile` ? "nav-link nav-link-active" : "nav-link"} href={`${base}/profile`}><span className="nav-index">ID</span>{!collapsed ? <span>Profile</span> : null}</Link>
-          <button title={collapsed ? "Sign out" : undefined} aria-label="Sign out" className="nav-link w-full" type="button" onClick={signOut}><span className="nav-index">↪</span>{!collapsed ? <span>Sign out</span> : null}</button>
         </div>
       </aside>
 
@@ -126,6 +135,10 @@ export function AppShell({ children, tenantSlug = "meridian-field-services" }: {
           <div className="hidden items-center gap-2 text-xs text-muted md:flex"><span className="size-2 bg-accent" /><span>{membership?.organization.name ?? "Workspace"}</span><span className="text-faint">/</span><span className="capitalize">{pathname.split("/").filter(Boolean).at(-1)?.replaceAll("-", " ") ?? "Overview"}</span></div>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden border border-line bg-panel px-2 py-1 font-mono text-[9px] uppercase text-muted sm:block">{membership?.organization.timezone ?? "Africa/Nairobi"}</span>
+            {signOutError ? <span className="hidden max-w-52 text-right text-[10px] text-danger-ink md:block" role="alert">{signOutError}</span> : null}
+            <button className="button-secondary h-9 gap-2 px-3 text-xs" type="button" onClick={signOut} disabled={signingOut} aria-label={signingOut ? "Signing out" : "Sign out"}>
+              <span aria-hidden="true">↪</span><span className="hidden sm:inline">{signingOut ? "Signing out…" : "Sign out"}</span>
+            </button>
             <Link className="user-chip border-l border-line pl-3 no-underline" href={`${base}/profile`}>
               {identity?.user.avatar_url ? <Image src={identity.user.avatar_url} alt={identity.user.avatar_alt_text || "Profile"} width={36} height={36} className="size-9 object-cover" unoptimized /> : <span className="avatar">{initials}</span>}
               <span className="hidden sm:block"><b>{identity?.user.display_name ?? "Loading identity"}</b><small>{membership?.role.name ?? "Membership"}</small></span>

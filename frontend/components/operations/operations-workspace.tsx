@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/accounts/api";
 import { ErrorState, LoadingState } from "@/components/kernel/projection";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { PaginatedCollection } from "@/components/ui/paginated-collection";
 
 export type OperationsSection = "feedback" | "requests" | "comments" | "files" | "search" | "data-jobs" | "audit" | "work-orders" | "notifications";
 type Row = Record<string, unknown> & { id?: string };
@@ -70,7 +71,7 @@ export function OperationsWorkspace({ tenantSlug, section }: { tenantSlug: strin
       {notice ? <p className="border-l-2 border-accent bg-success-soft p-3 text-xs text-success-ink" role="status">{notice}</p> : null}
       {error ? <ErrorState title="Action not completed" detail={error} /> : null}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <RecordList rows={rows} empty={`No ${definition.title.toLowerCase()} records yet.`} />
+        <RecordList rows={rows} itemLabel={section === "work-orders" ? "work orders" : section === "requests" ? "requests" : "records"} empty={`No ${definition.title.toLowerCase()} records yet.`} />
         <FeatureForm section={section} submit={submitJson} search={(query) => load(`?q=${encodeURIComponent(query)}`)} tenantSlug={tenantSlug} />
       </div>
       {section === "notifications" ? <PreferenceList rows={(payload.preferences as Row[] | undefined) ?? []} /> : null}
@@ -79,14 +80,14 @@ export function OperationsWorkspace({ tenantSlug, section }: { tenantSlug: strin
   );
 }
 
-function RecordList({ rows, empty }: { rows: Row[]; empty: string }) {
+function RecordList({ rows, empty, itemLabel }: { rows: Row[]; empty: string; itemLabel: string }) {
   if (!rows.length) return <div className="panel text-sm text-muted">{empty}</div>;
-  return <div className="grid content-start gap-px border border-line bg-line">{rows.map((row, index) => {
+  return <PaginatedCollection items={rows} itemLabel={itemLabel} initialPageSize={5} pageSizeOptions={[5, 10, 25, 50]} controlsPosition="both">{(visibleRows) => <div className="grid content-start gap-px border border-line bg-line">{visibleRows.map((row, index) => {
     const title = String(row.title ?? row.description ?? row.message ?? row.original_name ?? row.event_type ?? row.event_id ?? row.resource_type ?? `Record ${index + 1}`);
     const status = row.status ?? row.triage_status ?? row.upload_status ?? row.category;
     const detail = String(row.plain_text ?? row.plain_instructions ?? row.body_text ?? row.location_text ?? row.reason ?? "");
     return <article className="bg-panel p-4" key={row.id ?? index}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="spec-kicker">{String(row.resource_type ?? row.channel ?? "Tenant record")}</p><h2 className="mt-2 truncate text-sm font-bold">{title}</h2></div>{status ? <span className="status-badge bg-primary-soft text-primary">{String(status)}</span> : null}</div>{detail ? <p className="mt-3 line-clamp-3 text-xs leading-5 text-muted">{detail}</p> : null}<p className="mt-4 font-mono text-[9px] uppercase text-faint">{String(row.created_at ?? row.updated_at ?? "")}</p></article>;
-  })}</div>;
+  })}</div>}</PaginatedCollection>;
 }
 
 function FeatureForm({ section, submit, search, tenantSlug }: { section: OperationsSection; submit: (values: Record<string, unknown>, path?: string) => Promise<void>; search: (query: string) => Promise<void>; tenantSlug: string }) {
@@ -106,8 +107,8 @@ function Input({ name, label, type = "text", defaultValue }: { name: string; lab
 function Textarea({ name, label }: { name: string; label: string }) { return <label className="field-label">{label}<textarea className="control min-h-28" name={name} required /></label>; }
 function Select({ name, label, options }: { name: string; label: string; options: string[] }) { return <label className="field-label">{label}<select className="control" name={name}>{options.map((option) => <option key={option}>{option}</option>)}</select></label>; }
 function Check({ name, label, defaultChecked = false }: { name: string; label: string; defaultChecked?: boolean }) { return <label className="flex items-center gap-2 text-xs"><input name={name} type="checkbox" defaultChecked={defaultChecked}/>{label}</label>; }
-function PreferenceList({ rows }: { rows: Row[] }) { return <section className="panel"><p className="eyebrow">Delivery preferences</p><div className="mt-4 flex flex-wrap gap-2">{rows.map((row, index) => <span className="variant-chip" key={row.id ?? index}>{String(row.event_key)} · in-app {row.in_app ? "on" : "off"} · email {row.email ? "on" : "off"}</span>)}</div></section>; }
-function ImportList({ rows }: { rows: Row[] }) { return <section className="panel"><p className="eyebrow">Import jobs</p><div className="mt-4 flex flex-wrap gap-2">{rows.map((row, index) => <span className="variant-chip" key={row.id ?? index}>{String(row.resource_type)} · {String(row.status)} · {String(row.valid_rows ?? 0)} valid / {String(row.invalid_rows ?? 0)} invalid</span>)}</div></section>; }
+function PreferenceList({ rows }: { rows: Row[] }) { return <section className="panel"><p className="eyebrow">Delivery preferences</p><PaginatedCollection items={rows} itemLabel="preferences" className="mt-4">{visibleRows => <div className="flex flex-wrap gap-2 border border-line p-3">{visibleRows.map((row, index) => <span className="variant-chip" key={row.id ?? index}>{String(row.event_key)} · in-app {row.in_app ? "on" : "off"} · email {row.email ? "on" : "off"}</span>)}</div>}</PaginatedCollection></section>; }
+function ImportList({ rows }: { rows: Row[] }) { return <section className="panel"><p className="eyebrow">Import jobs</p><PaginatedCollection items={rows} itemLabel="jobs" className="mt-4">{visibleRows => <div className="flex flex-wrap gap-2 border border-line p-3">{visibleRows.map((row, index) => <span className="variant-chip" key={row.id ?? index}>{String(row.resource_type)} · {String(row.status)} · {String(row.valid_rows ?? 0)} valid / {String(row.invalid_rows ?? 0)} invalid</span>)}</div>}</PaginatedCollection></section>; }
 
 function FileForm({ tenantSlug }: { tenantSlug: string }) {
   const [message, setMessage] = useState("");

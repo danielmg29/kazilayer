@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "@/lib/accounts/api";
 import type { AccountSession } from "@/lib/accounts/types";
+import { PaginatedCollection } from "@/components/ui/paginated-collection";
 
 export function SessionPanel() {
   const [sessions, setSessions] = useState<AccountSession[]>([]);
@@ -35,14 +36,16 @@ export function SessionPanel() {
         <span className="variant-chip">{sessions.filter((item) => !item.revoked_at).length} active</span>
       </div>
       {error ? <p className="mt-5 text-xs text-danger-ink" role="alert">{error}</p> : null}
-      <div className="mt-5 grid gap-px border border-line bg-line">
-        {sessions.map((session) => (
+      <PaginatedCollection items={sessions} itemLabel="sessions" className="mt-5">
+        {(visibleSessions) => <div className="grid gap-px border border-line bg-line">
+        {visibleSessions.map((session) => (
           <article className="flex flex-col gap-3 bg-panel p-4 sm:flex-row sm:items-center" key={session.id}>
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{session.device_label || "Web browser"}</p><p className="mt-1 font-mono text-[10px] uppercase text-muted">Last seen {session.last_seen_at ? new Date(session.last_seen_at).toLocaleString() : "unknown"}</p></div>
             {session.current ? <span className="status-badge bg-success-soft text-success-ink">Current</span> : session.revoked_at ? <span className="status-badge">Revoked</span> : <button className="button-secondary" type="button" onClick={() => revoke(session.id)}>Revoke</button>}
           </article>
         ))}
-      </div>
+      </div>}
+      </PaginatedCollection>
     </section>
   );
 }
